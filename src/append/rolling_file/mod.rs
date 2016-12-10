@@ -145,7 +145,7 @@ impl fmt::Debug for RollingFileAppender {
 }
 
 impl Append for RollingFileAppender {
-    fn append(&self, record: &LogRecord) -> Result<(), Box<Error>> {
+    fn append(&self, record: &LogRecord) -> Result<(), Box<Error + Sync + Send>> {
         let mut writer = self.writer.lock();
 
         let len = {
@@ -289,7 +289,7 @@ impl Deserialize for RollingFileAppenderDeserializer {
     fn deserialize(&self,
                    config: RollingFileAppenderConfig,
                    deserializers: &Deserializers)
-                   -> Result<Box<Append>, Box<Error>> {
+                   -> Result<Box<Append>, Box<Error + Sync + Send>> {
         let mut builder = RollingFileAppender::builder();
         if let Some(append) = config.append {
             builder = builder.append(append);
@@ -355,7 +355,7 @@ appenders:
     struct NopPolicy;
 
     impl Policy for NopPolicy {
-        fn process(&self, _: &mut LogFile) -> Result<(), Box<Error>> {
+        fn process(&self, _: &mut LogFile) -> Result<(), Box<Error + Sync + Send>> {
             Ok(())
         }
     }

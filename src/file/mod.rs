@@ -121,7 +121,7 @@ pub trait Deserialize: Send + Sync + 'static {
     fn deserialize(&self,
                    config: Self::Config,
                    deserializers: &Deserializers)
-                   -> Result<Box<Self::Trait>, Box<error::Error>>;
+                   -> Result<Box<Self::Trait>, Box<error::Error + Sync + Send>>;
 }
 
 trait ErasedDeserialize: Send + Sync + 'static {
@@ -130,7 +130,7 @@ trait ErasedDeserialize: Send + Sync + 'static {
     fn deserialize(&self,
                    config: Value,
                    deserializers: &Deserializers)
-                   -> Result<Box<Self::Trait>, Box<error::Error>>;
+                   -> Result<Box<Self::Trait>, Box<error::Error + Sync + Send>>;
 }
 
 struct DeserializeEraser<T>(T);
@@ -143,7 +143,7 @@ impl<T> ErasedDeserialize for DeserializeEraser<T>
     fn deserialize(&self,
                    config: Value,
                    deserializers: &Deserializers)
-                   -> Result<Box<Self::Trait>, Box<error::Error>> {
+                   -> Result<Box<Self::Trait>, Box<error::Error + Sync + Send>> {
         let config = try!(config.deserialize_into());
         self.0.deserialize(config, deserializers)
     }
@@ -301,7 +301,7 @@ impl Deserializers {
     pub fn deserialize<T: ?Sized>(&self,
                                   kind: &str,
                                   config: Value)
-                                  -> Result<Box<T>, Box<error::Error>>
+                                  -> Result<Box<T>, Box<error::Error + Sync + Send>>
         where T: Deserializable
     {
         match self.0.get::<KeyAdaptor<T>>().and_then(|m| m.get(kind)) {
@@ -320,7 +320,7 @@ impl Deserializers {
 #[derive(Debug)]
 pub enum Error {
     /// An error deserializing a component.
-    Deserialization(Box<error::Error>),
+    Deserialization(Box<error::Error + Sync + Send>),
     /// An error creating the log4rs `Config`.
     Config(config::Error),
 }
@@ -383,7 +383,7 @@ impl Config {
     pub fn parse(config: &str,
                  format: Format,
                  deserializers: &Deserializers)
-                 -> Result<Config, Box<error::Error>> {
+                 -> Result<Config, Box<error::Error + Sync + Send>> {
         let mut errors = vec![];
 
         let config = try!(parse(format, config));
@@ -462,7 +462,7 @@ impl Config {
     }
 }
 
-fn parse(format: Format, _config: &str) -> Result<raw::Config, Box<error::Error>> {
+fn parse(format: Format, _config: &str) -> Result<raw::Config, Box<error::Error + Sync + Send>> {
     match format {
         #[cfg(feature = "yaml_format")]
         Format::Yaml => ::serde_yaml::from_str(_config).map_err(Into::into),

@@ -18,7 +18,7 @@ include!("config.rs");
 pub struct DeleteRoller(());
 
 impl Roll for DeleteRoller {
-    fn roll(&self, file: &Path) -> Result<(), Box<Error>> {
+    fn roll(&self, file: &Path) -> Result<(), Box<Error + Sync + Send>> {
         fs::remove_file(file).map_err(Into::into)
     }
 }
@@ -49,7 +49,7 @@ impl Deserialize for DeleteRollerDeserializer {
     fn deserialize(&self,
                    _: DeleteRollerConfig,
                    _: &Deserializers)
-                   -> Result<Box<Roll>, Box<Error>> {
+                   -> Result<Box<Roll>, Box<Error + Sync + Send>> {
         Ok(Box::new(DeleteRoller::new()))
     }
 }

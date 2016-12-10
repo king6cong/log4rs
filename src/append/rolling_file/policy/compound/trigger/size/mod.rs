@@ -99,7 +99,7 @@ impl SizeTrigger {
 }
 
 impl Trigger for SizeTrigger {
-    fn trigger(&self, file: &LogFile) -> Result<bool, Box<Error>> {
+    fn trigger(&self, file: &LogFile) -> Result<bool, Box<Error + Sync + Send>> {
         Ok(file.len() > self.limit)
     }
 }
@@ -128,7 +128,7 @@ impl Deserialize for SizeTriggerDeserializer {
     fn deserialize(&self,
                    config: SizeTriggerConfig,
                    _: &Deserializers)
-                   -> Result<Box<Trigger>, Box<Error>> {
+                   -> Result<Box<Trigger>, Box<Error + Sync + Send>> {
         Ok(Box::new(SizeTrigger::new(config.limit)))
     }
 }
