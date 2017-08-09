@@ -60,6 +60,7 @@
 //! * `n` - A platform-specific newline.
 //! * `t`, `target` - The target of the log message.
 //! * `T`, `thread` - The name of the current thread.
+//! * `P`, `pid` - The process ID of the current program..
 //! * `X`, `mdc` - A value from the [MDC][MDC]. The first argument specifies
 //!     the key, and the second argument specifies the default value if the
 //!     key is not present in the MDC. The second argument is optional, and
@@ -122,6 +123,11 @@ use std::error::Error;
 use std::fmt;
 use std::io;
 use std::thread;
+
+#[cfg(not(windows))]
+use libc;
+#[cfg(windows)]
+use kernel32;
 
 use encode::pattern::parser::{Parser, Piece, Parameters, Alignment};
 use encode::{self, Encode, Style, Color, NEWLINE};
@@ -445,6 +451,7 @@ impl<'a> From<Piece<'a>> for Chunk {
                     "f" | "file" => no_args(&formatter.args, parameters, FormattedChunk::File),
                     "L" | "line" => no_args(&formatter.args, parameters, FormattedChunk::Line),
                     "T" | "thread" => no_args(&formatter.args, parameters, FormattedChunk::Thread),
+                    "P" | "pid" => no_args(&formatter.args, parameters, FormattedChunk::Pid),
                     "t" | "target" => no_args(&formatter.args, parameters, FormattedChunk::Target),
                     "X" | "mdc" => {
                         if formatter.args.len() > 2 {
@@ -534,6 +541,7 @@ enum FormattedChunk {
     Line,
     Thread,
     Target,
+    Pid,
     Newline,
     Align(Vec<Chunk>),
     Highlight(Vec<Chunk>),
@@ -561,6 +569,9 @@ impl FormattedChunk {
             FormattedChunk::Line => write!(w, "{}", location.line),
             FormattedChunk::Thread => {
                 w.write_all(thread::current().name().unwrap_or("<unnamed>").as_bytes())
+            }
+            FormattedChunk::Pid => {
+                w.write_all(get_pid().to_string().as_bytes())
             }
             FormattedChunk::Target => w.write_all(target.as_bytes()),
             FormattedChunk::Newline => w.write_all(NEWLINE.as_bytes()),
@@ -692,6 +703,21 @@ impl Deserialize for PatternEncoderDeserializer {
     }
 }
 
+/// Get the process ID as String for different OS
+#[cfg(not (target_os = "windows"))]
+fn get_pid() -> u64 { 
+    unsafe {
+        libc::getpid() as u64
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn get_pid() -> u64 { 
+    unsafe {
+        kernel32::GetCurrentProcessId() as u64
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #[cfg(feature = "simple_writer")]
@@ -706,6 +732,8 @@ mod tests {
     use super::Location;
     #[cfg(feature = "simple_writer")]
     use encode::writer::simple::SimpleWriter;
+    #[cfg(feature = "simple_writer")]
+    use encode::pattern::get_pid;
 
     #[cfg(feature = "simple_writer")]
     static LOCATION: Location<'static> = Location {
@@ -785,6 +813,21 @@ mod tests {
             .unwrap()
             .join()
             .unwrap();
+    }
+
+    #[test]
+    #[cfg(feature = "simple_writer")]
+    fn process_id() {
+        let pw = PatternEncoder::new(r"{P}");
+
+        let mut buf = vec![];
+        pw.append_inner(&mut SimpleWriter(&mut buf),
+                          LogLevel::Info,
+                          "",
+                          &LOCATION,
+                          &format_args!("foo"))
+            .unwrap();
+        assert_eq!(buf, get_pid().to_string().as_bytes());
     }
 
     #[test]
