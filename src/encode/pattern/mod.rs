@@ -124,13 +124,8 @@ use std::fmt;
 use std::io;
 use std::thread;
 
-#[cfg(not(windows))]
-use libc;
-#[cfg(windows)]
-use kernel32;
-
 use encode::pattern::parser::{Parser, Piece, Parameters, Alignment};
-use encode::{self, Encode, Style, Color, NEWLINE};
+use encode::{self, Encode, Style, Color, NEWLINE, get_pid};
 #[cfg(feature = "file")]
 use file::{Deserialize, Deserializers};
 
@@ -703,21 +698,6 @@ impl Deserialize for PatternEncoderDeserializer {
     }
 }
 
-/// Get the process ID as String for different OS
-#[cfg(not (target_os = "windows"))]
-fn get_pid() -> u64 { 
-    unsafe {
-        libc::getpid() as u64
-    }
-}
-
-#[cfg(target_os = "windows")]
-fn get_pid() -> u64 { 
-    unsafe {
-        kernel32::GetCurrentProcessId() as u64
-    }
-}
-
 #[cfg(test)]
 mod tests {
     #[cfg(feature = "simple_writer")]
@@ -733,7 +713,7 @@ mod tests {
     #[cfg(feature = "simple_writer")]
     use encode::writer::simple::SimpleWriter;
     #[cfg(feature = "simple_writer")]
-    use encode::pattern::get_pid;
+    use encode::get_pid;
 
     #[cfg(feature = "simple_writer")]
     static LOCATION: Location<'static> = Location {
