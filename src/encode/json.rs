@@ -35,7 +35,7 @@ use std::option;
 use serde::ser::{self, Serialize, SerializeMap};
 use serde_json;
 
-use encode::{Encode, Write, NEWLINE};
+use encode::{Encode, Write, NEWLINE, get_pid};
 #[cfg(feature = "file")]
 use file::{Deserialize, Deserializers};
 
@@ -80,6 +80,7 @@ impl JsonEncoder {
             line: line,
             target: target,
             thread: thread.name(),
+            pid: get_pid(),
             mdc: Mdc,
         };
         message.serialize(&mut serde_json::Serializer::new(&mut *w))?;
@@ -113,6 +114,7 @@ struct Message<'a> {
     level: &'static str,
     target: &'a str,
     thread: Option<&'a str>,
+    pid: u64,
     mdc: Mdc,
 }
 
@@ -217,7 +219,7 @@ mod test {
 
         let expected = format!("{{\"time\":\"{}\",\"message\":\"{}\",\"module_path\":\"{}\",\
                                 \"file\":\"{}\",\"line\":{},\"level\":\"{}\",\"target\":\"{}\",\
-                                \"thread\":\"{}\",\"mdc\":{{\"foo\":\"bar\"}}}}",
+                                \"thread\":\"{}\",\"pid\":{},\"mdc\":{{\"foo\":\"bar\"}}}}",
                                time.to_rfc3339(),
                                message,
                                module_path,
@@ -225,7 +227,8 @@ mod test {
                                line,
                                level,
                                target,
-                               thread);
+                               thread,
+                               get_pid());
         assert_eq!(expected, String::from_utf8(buf).unwrap().trim());
     }
 }

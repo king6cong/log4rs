@@ -14,6 +14,11 @@ use std::io;
 #[cfg(feature = "file")]
 use file::Deserializable;
 
+#[cfg(not(windows))]
+use libc;
+#[cfg(windows)]
+use kernel32;
+
 #[cfg(feature = "json_encoder")]
 pub mod json;
 #[cfg(feature = "pattern_encoder")]
@@ -156,5 +161,20 @@ pub trait Write: io::Write {
 impl<'a, W: Write + ?Sized> Write for &'a mut W {
     fn set_style(&mut self, style: &Style) -> io::Result<()> {
         <W as Write>::set_style(*self, style)
+    }
+}
+
+/// Get the process ID as String for different OS
+#[cfg(not (target_os = "windows"))]
+fn get_pid() -> u64 {
+    unsafe {
+        libc::getpid() as u64
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn get_pid() -> u64 {
+    unsafe {
+        kernel32::GetCurrentProcessId() as u64
     }
 }
